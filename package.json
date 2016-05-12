@@ -6,7 +6,8 @@
     "node-core-module-names": "1.1.0"
   },
   "scripts": {
-    "test": "standard"
+    "test": "standard",
+    "example": "node index ./example"
   },
   "devDependencies": {
     "standard": "7.0.1"

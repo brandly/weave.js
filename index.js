@@ -5,7 +5,7 @@ const _ = require('lodash')
 const async = require('async')
 const coreModulesNames = require('node-core-module-names')
 
-const entry = './example/index.js'
+const entry = process.argv[2]
 
 weave(entry)
 
