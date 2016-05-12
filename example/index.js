@@ -1,4 +1,5 @@
 const other = require('./other')
+const deep = require('./deep')
 const async = require('async')
 const _ = require('lodash')
 
@@ -13,3 +14,4 @@ _.forEach([a], (b) => b()())
 console.log(other())
 
 console.log(typeof async)
+deep()

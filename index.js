@@ -3,6 +3,7 @@ const path = require('path')
 const parser = require('esprima')
 const _ = require('lodash')
 const async = require('async')
+const coreModulesNames = require('node-core-module-names')
 
 const entry = './example/index.js'
 
@@ -13,6 +14,7 @@ function weave (entry) {
 
   buildDependencyTree(fullEntry, (error, results) => {
     if (error) {
+      console.trace(error)
       throw error
     } else {
       console.log('dependency tree!')
@@ -30,8 +32,22 @@ function viewDependencyTree (tree, padding) {
   tree.dependencies.forEach(dep => viewDependencyTree(dep, childrenPadding))
 }
 
+// TODO: actually implement the spec
+// https://nodejs.org/api/modules.html#modules_all_together
 function buildDependencyTree (file, callback) {
-  // TODO: handle built-in-to-node packages like `path` and such
+  if (file.endsWith('.json')) {
+    console.warn('Cannot handle json yet', file)
+    callback(null, { absolute: file, dependencies: []})
+    return
+  }
+
+  if (_.includes(coreModulesNames, file)) {
+    // TODO: handle built-in-to-node packages (core modules) like `path` and such
+    console.warn('Cannot handle core modules yet:', file)
+    callback(null, { absolute: file, dependencies: []})
+    return
+  }
+
   // it's a node_module!
   if (!file.startsWith('/')) {
     findNodeModulesPath(getDirForFile(file), (error, nodeModulesDir) => {
@@ -39,29 +55,19 @@ function buildDependencyTree (file, callback) {
         callback(error)
       } else {
         const modulePath = path.resolve(nodeModulesDir, file)
-
-        const pkg = require(path.resolve(modulePath, 'package.json'))
-        const moduleEntry = path.resolve(modulePath, pkg.main || 'index.js')
-
-        buildDependencyTree(moduleEntry, callback)
+        loadAsDirectory(modulePath, callback)
       }
     })
     return
   }
 
-  // TODO: handle file paths like `src` hitting `src/index.js`
-  if (!file.endsWith('.js')) {
-    file += '.js'
-  }
-
-  fs.readFile(file, (error, results) => {
-    if (error) {
+  loadAsFile(file, (error, tree) => {
+    if (doesNotExistError(error)) {
+      loadAsDirectory(file)
+    } else if (error) {
       callback(error)
     } else {
-      const source = results.toString()
-      const syntax = parser.parse(source)
-
-      addDependenciesToFile({ source, syntax, file }, callback)
+      callback(null, tree)
     }
   })
 }
@@ -87,6 +93,48 @@ function addDependenciesToFile (params, callback) {
       }
 
       callback(null, result)
+    }
+  })
+}
+
+function loadAsFile (file, callback) {
+  fs.readFile(file, (error, results) => {
+    if (doesNotExistError(error) && !file.endsWith('.js')) {
+      const withExtension = file + '.js'
+      loadAsFile(withExtension, callback)
+
+    } else if (illegalOperationOnDirectoryError(error)) {
+      loadAsDirectory(file, callback)
+
+    } else if (error) {
+      callback(error)
+
+    } else {
+      const source = results.toString()
+      const syntax = parser.parse(source)
+
+      addDependenciesToFile({ source, syntax, file }, callback)
+    }
+  })
+}
+
+function loadAsDirectory (dir, callback) {
+  const pkgPath = path.resolve(dir, 'package.json')
+
+  fs.open(pkgPath, 'r', (error) => {
+    if (doesNotExistError(error)) {
+      loadAsFile(path.resolve(dir, 'index.js'), callback)
+
+    } else if (error) {
+      console.trace(error)
+      callback(error)
+
+    } else {
+      // TODO: should i _not_ use require?
+      const pkg = require(pkgPath)
+      const moduleEntry = path.resolve(dir, pkg.main || 'index.js')
+
+      buildDependencyTree(moduleEntry, callback)
     }
   })
 }
@@ -150,15 +198,23 @@ function getDirForFile (file) {
 function findNodeModulesPath (dir, callback) {
   const attempt = path.resolve(dir, 'node_modules')
 
-  fs.open(attempt, 'r', function (err, fd) {
-    if (err && err.code === 'ENOENT') {
+  fs.open(attempt, 'r', function (error, fd) {
+    if (doesNotExistError(error)) {
       return findNodeModulesPath(getParentDir(dir), callback)
-    } else if (err) {
-      callback(err)
+    } else if (error) {
+      callback(error)
     } else {
       callback(null, attempt)
     }
   })
+}
+
+function doesNotExistError (error) {
+  return error && error.code === 'ENOENT'
+}
+
+function illegalOperationOnDirectoryError (error) {
+  return error && error.code === 'EISDIR'
 }
 
 function getParentDir (dir) {
