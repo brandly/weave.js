@@ -12,8 +12,12 @@ function weave (entry) {
   const fullEntry = path.resolve(entry)
 
   buildDependencyTree(fullEntry, (error, results) => {
-    console.log('dependency tree!')
-    viewDependencyTree(results)
+    if (error) {
+      throw error
+    } else {
+      console.log('dependency tree!')
+      viewDependencyTree(results)
+    }
   })
 }
 
@@ -30,13 +34,17 @@ function buildDependencyTree (file, callback) {
   // TODO: handle built-in-to-node packages like `path` and such
   // it's a node_module!
   if (!file.startsWith('/')) {
-    findNodeModulesPath(getDirForFile(file), (err, nodeModulesDir) => {
-      const modulePath = path.resolve(nodeModulesDir, file)
+    findNodeModulesPath(getDirForFile(file), (error, nodeModulesDir) => {
+      if (error) {
+        callback(error)
+      } else {
+        const modulePath = path.resolve(nodeModulesDir, file)
 
-      const pkg = require(path.resolve(modulePath, 'package.json'))
-      const moduleEntry = path.resolve(modulePath, pkg.main || 'index.js')
+        const pkg = require(path.resolve(modulePath, 'package.json'))
+        const moduleEntry = path.resolve(modulePath, pkg.main || 'index.js')
 
-      buildDependencyTree(moduleEntry, callback)
+        buildDependencyTree(moduleEntry, callback)
+      }
     })
     return
   }
@@ -46,11 +54,15 @@ function buildDependencyTree (file, callback) {
     file += '.js'
   }
 
-  fs.readFile(file, (err, results) => {
-    const source = results.toString()
-    const syntax = parser.parse(source)
+  fs.readFile(file, (error, results) => {
+    if (error) {
+      callback(error)
+    } else {
+      const source = results.toString()
+      const syntax = parser.parse(source)
 
-    addDependenciesToFile({ source, syntax, file }, callback)
+      addDependenciesToFile({ source, syntax, file }, callback)
+    }
   })
 }
 
@@ -64,14 +76,18 @@ function addDependenciesToFile (params, callback) {
   const absoluteRequires = requiresList.map(dep => dep.startsWith('.') ? path.resolve(dir, dep) : dep)
 
   async.map(absoluteRequires, buildDependencyTree, (error, dependencies) => {
-    const result = {
-      absolute: file,
-      source,
-      syntax,
-      dependencies
-    }
+    if (error) {
+      callback(error)
+    } else {
+      const result = {
+        absolute: file,
+        source,
+        syntax,
+        dependencies
+      }
 
-    callback(error, result)
+      callback(null, result)
+    }
   })
 }
 
