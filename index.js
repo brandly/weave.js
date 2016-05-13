@@ -40,14 +40,14 @@ function buildDependencyTree (file, callback) {
 
   if (file.endsWith('.json')) {
     console.warn('Cannot handle json yet', file)
-    callback(null, { absolute: file, dependencies: []})
+    callback(null, { absolute: file, dependencies: [] })
     return
   }
 
   if (_.includes(coreModulesNames, file)) {
     // TODO: handle built-in-to-node packages (core modules) like `path` and such
     console.warn('Cannot handle core modules yet:', file)
-    callback(null, { absolute: file, dependencies: []})
+    callback(null, { absolute: file, dependencies: [] })
     return
   }
 
@@ -110,13 +110,10 @@ function loadAsFile (file, callback) {
     if (doesNotExistError(error) && !file.endsWith('.js')) {
       const withExtension = file + '.js'
       loadAsFile(withExtension, callback)
-
     } else if (illegalOperationOnDirectoryError(error)) {
       loadAsDirectory(file, callback)
-
     } else if (error) {
       callback(error)
-
     } else {
       const source = results.toString()
       const syntax = parser.parse(source)
@@ -134,11 +131,8 @@ function loadAsDirectory (dir, callback) {
   fs.open(pkgPath, 'r', (error) => {
     if (doesNotExistError(error)) {
       loadAsFile(path.resolve(dir, 'index.js'), callback)
-
     } else if (error) {
-      console.trace(error)
       callback(error)
-
     } else {
       // TODO: should i _not_ use require?
       const pkg = require(pkgPath)
