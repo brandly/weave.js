@@ -55,6 +55,7 @@ function findAllRequireStatementsHelper (syntax) {
     case 'EmptyStatement':
     case 'BreakStatement':
     case 'ThisExpression':
+    case 'ContinueStatement':
     case 'TemplateElement':
       return null
     case 'TemplateLiteral':
@@ -73,7 +74,7 @@ function findAllRequireStatementsHelper (syntax) {
     case 'ForInStatement':
       return [syntax.right, syntax.left, syntax.body].map(findAllRequireStatementsHelper)
     case 'ForStatement':
-      return [syntax.init, syntax.test, syntax.update, syntax.body].map(findAllRequireStatementsHelper)
+      return [syntax.init, syntax.test, syntax.update, syntax.body].filter(notNull).map(findAllRequireStatementsHelper)
     case 'WhileStatement':
       return [syntax.test, syntax.body].map(findAllRequireStatementsHelper)
     case 'ConditionalExpression':
