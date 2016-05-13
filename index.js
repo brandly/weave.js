@@ -63,7 +63,7 @@ function buildDependencyTree (file, callback) {
 
   loadAsFile(file, (error, tree) => {
     if (doesNotExistError(error)) {
-      loadAsDirectory(file)
+      loadAsDirectory(file, callback)
     } else if (error) {
       callback(error)
     } else {
