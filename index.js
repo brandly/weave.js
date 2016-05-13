@@ -1,3 +1,5 @@
+'use strict'
+
 const fs = require('fs')
 const path = require('path')
 const parser = require('esprima')
@@ -12,9 +14,11 @@ const entry = process.argv[2]
 weave(entry)
 
 function weave (entry) {
-  const fullEntry = path.resolve(entry)
+  // TODO: figure out how to handle initial `dir`
+  const dir = path.resolve(getParentDir(entry))
+  const value = './' + _.last(entry.split('/'))
 
-  buildDependencyTree(fullEntry, (error, results) => {
+  buildDependencyTree({ value, dir }, (error, results) => {
     if (error) {
       console.trace(error)
       throw error
@@ -36,64 +40,70 @@ function viewDependencyTree (tree, padding) {
 
 // TODO: actually implement the spec
 // https://nodejs.org/api/modules.html#modules_all_together
-function buildDependencyTree (file, callback) {
-  debug('buildDependencyTree', file)
+function buildDependencyTree (requirement, callback) {
+  debug('buildDependencyTree', requirement)
 
-  if (file.endsWith('.json')) {
-    console.warn('Cannot handle json yet', file)
-    callback(null, { absolute: file, dependencies: [] })
+  const value = requirement.value
+  const dir = requirement.dir
+
+  if (value.endsWith('.json')) {
+    console.warn('Cannot handle json yet', value)
+    callback(null, { absolute: value, dependencies: [] })
     return
   }
 
-  if (_.includes(coreModulesNames, file)) {
+  if (_.includes(coreModulesNames, value)) {
     // TODO: handle built-in-to-node packages (core modules) like `path` and such
-    console.warn('Cannot handle core modules yet:', file)
-    callback(null, { absolute: file, dependencies: [] })
+    console.warn('Cannot handle core modules yet:', value)
+    callback(null, { absolute: value, dependencies: [] })
     return
   }
 
-  // it's a node_module!
-  if (!file.startsWith('/')) {
-    debug('node_module!', file)
+  if (value.startsWith('./') || value.startsWith('/') || value.startsWith('../')) {
+    loadAsFile(requirement, (error, tree) => {
+      if (doesNotExistError(error)) {
+        debug('file does not exist', requirement)
+        loadAsDirectory(requirement, callback)
+      } else if (error) {
+        callback(error)
+      } else {
+        callback(null, tree)
+      }
+    })
+    return
+  } else {
+    debug('node_module!', value)
 
-    findNodeModulesPath(file, (error, nodeModulesDir) => {
+    findNodeModulesPath(dir, (error, nodeModulesDir) => {
       if (error) {
         callback(error)
       } else {
-        const modulePath = path.resolve(nodeModulesDir, file)
-        loadAsDirectory(modulePath, callback)
+        loadAsDirectory(Object.assign({}, requirement, {
+          dir: nodeModulesDir
+        }), callback)
       }
     })
     return
   }
-
-  loadAsFile(file, (error, tree) => {
-    if (doesNotExistError(error)) {
-      loadAsDirectory(file, callback)
-    } else if (error) {
-      callback(error)
-    } else {
-      callback(null, tree)
-    }
-  })
 }
 
 function addDependenciesToFile (params, callback) {
   const source = params.source
   const syntax = params.syntax
-  const file = params.file
-  debug('addDependenciesToFile', file)
+  const value = params.value
+  const dir = params.dir
 
-  const dir = getDirForFile(file)
-  const requiresList = findAllRequireStatements(syntax)
-  const absoluteRequires = requiresList.map(dep => dep.startsWith('.') ? path.resolve(dir, dep) : dep)
+  debug('addDependenciesToFile', { value, dir })
 
-  async.map(absoluteRequires, buildDependencyTree, (error, dependencies) => {
+  const requiresList = findAllRequireStatements(syntax).map(value => { return { value, dir } })
+  debug('requiresList', JSON.stringify(requiresList))
+
+  async.map(requiresList, buildDependencyTree, (error, dependencies) => {
     if (error) {
       callback(error)
     } else {
       const result = {
-        absolute: file,
+        absolute: path.resolve(dir, value),
         source,
         syntax,
         dependencies
@@ -104,50 +114,62 @@ function addDependenciesToFile (params, callback) {
   })
 }
 
-function loadAsFile (file, callback) {
-  debug('loadAsFile', file)
+function loadAsFile (requirement, callback) {
+  debug('loadAsFile', requirement)
 
-  fs.readFile(file, (error, results) => {
-    if (doesNotExistError(error) && !file.endsWith('.js')) {
-      const withExtension = file + '.js'
-      loadAsFile(withExtension, callback)
+  const value = requirement.value
+  const dir = requirement.dir
+
+  const fullPath = path.resolve(dir, value)
+  debug('fullPath', fullPath)
+
+  fs.readFile(fullPath, (error, results) => {
+    if (doesNotExistError(error) && !value.endsWith('.js')) {
+      const withExtension = value + '.js'
+      loadAsFile(Object.assign({}, requirement, { value: withExtension }), callback)
     } else if (illegalOperationOnDirectoryError(error)) {
-      loadAsDirectory(file, callback)
+      loadAsDirectory(requirement, callback)
     } else if (error) {
       callback(error)
     } else {
       const source = results.toString()
       const syntax = parser.parse(source)
 
-      addDependenciesToFile({ source, syntax, file }, callback)
+      // TODO: figure out how to call this
+      addDependenciesToFile({ source, syntax, value, dir }, callback)
     }
   })
 }
 
-function loadAsDirectory (dir, callback) {
-  debug('loadAsDirectory', dir)
+function loadAsDirectory (requirement, callback) {
+  debug('loadAsDirectory', requirement)
 
-  const pkgPath = path.resolve(dir, 'package.json')
+  const value = requirement.value
+  const dir = requirement.dir
+
+  const pkgPath = path.resolve(dir, value, 'package.json')
 
   fs.open(pkgPath, 'r', (error) => {
     if (doesNotExistError(error)) {
-      loadAsFile(path.resolve(dir, 'index.js'), callback)
+      loadAsFile({
+        value: 'index.js',
+        dir: path.join(dir, value)
+      }, callback)
     } else if (error) {
       callback(error)
     } else {
       // TODO: should i _not_ use require?
       const pkg = require(pkgPath)
-      const moduleEntry = path.resolve(dir, pkg.main || 'index.js')
+      const newDir = path.join(dir, value)
+      let newValue = pkg.main || 'index.js'
 
-      buildDependencyTree(moduleEntry, callback)
+      if (!newValue.startsWith('./')) {
+        newValue = './' + newValue
+      }
+
+      buildDependencyTree({ dir: newDir, value: newValue }, callback)
     }
   })
-}
-
-function getDirForFile (file) {
-  const splits = file.split('/')
-  const dirs = splits.slice(0, splits.length - 1)
-  return dirs.join('/')
 }
 
 function findNodeModulesPath (dir, callback) {
