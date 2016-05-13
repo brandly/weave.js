@@ -17,13 +17,18 @@ function findAllRequireStatements (syntax) {
 function findAllRequireStatementsHelper (syntax) {
   debug('syntax', syntax)
 
+  if (typeof syntax === 'undefined' || syntax === null) {
+    console.trace('why tho')
+  }
+
   switch (syntax.type) {
     case 'Program':
+    case 'BlockStatement':
       return syntax.body.map(findAllRequireStatementsHelper)
     case 'VariableDeclaration':
       return syntax.declarations.map(findAllRequireStatementsHelper)
     case 'VariableDeclarator':
-      return findAllRequireStatementsHelper(syntax.init)
+      return syntax.init && findAllRequireStatementsHelper(syntax.init)
     case 'CallExpression':
       if (syntax.callee.type === 'Identifier' && syntax.callee.name === 'require') {
         return syntax.arguments[0].value
@@ -32,9 +37,14 @@ function findAllRequireStatementsHelper (syntax) {
       }
     case 'FunctionDeclaration':
     case 'FunctionExpression':
-      return syntax.body.body.map(findAllRequireStatementsHelper)
+    case 'ArrowFunctionExpression':
+    case 'CatchClause':
+      return findAllRequireStatementsHelper(syntax.body)
     case 'ReturnStatement':
-      return findAllRequireStatementsHelper(syntax.argument)
+    case 'UpdateExpression':
+    case 'UnaryExpression':
+    case 'ThrowStatement':
+      return syntax.argument && findAllRequireStatementsHelper(syntax.argument)
     case 'ExpressionStatement':
       return findAllRequireStatementsHelper(syntax.expression)
     case 'AssignmentExpression':
@@ -43,16 +53,45 @@ function findAllRequireStatementsHelper (syntax) {
     case 'MemberExpression':
     case 'Identifier':
     case 'EmptyStatement':
+    case 'BreakStatement':
+    case 'ThisExpression':
+    case 'TemplateElement':
       return null
+    case 'TemplateLiteral':
+      return syntax.quasis.concat(syntax.expressions).map(findAllRequireStatementsHelper)
+    case 'SequenceExpression':
+      return syntax.expressions.map(findAllRequireStatementsHelper)
     case 'NewExpression':
       return syntax.arguments.map(findAllRequireStatementsHelper)
     case 'ObjectExpression':
       return syntax.properties.map(findAllRequireStatementsHelper)
     case 'Property':
       return findAllRequireStatementsHelper(syntax.value)
+    case 'BinaryExpression':
+    case 'LogicalExpression':
+      return [syntax.right, syntax.left].map(findAllRequireStatementsHelper)
+    case 'ForInStatement':
+      return [syntax.right, syntax.left, syntax.body].map(findAllRequireStatementsHelper)
+    case 'ForStatement':
+      return [syntax.init, syntax.test, syntax.update, syntax.body].map(findAllRequireStatementsHelper)
+    case 'WhileStatement':
+      return [syntax.test, syntax.body].map(findAllRequireStatementsHelper)
     case 'ConditionalExpression':
-      return [syntax.test.right, syntax.test.left].map(findAllRequireStatementsHelper)
+    case 'IfStatement':
+      return [syntax.test, syntax.consequent, syntax.alternate].filter(notNull).map(findAllRequireStatementsHelper)
+    case 'ArrayExpression':
+      return syntax.elements.map(findAllRequireStatementsHelper)
+    case 'TryStatement':
+      return [syntax.block].concat(syntax.handlers).map(findAllRequireStatementsHelper)
+    case 'SwitchStatement':
+      return [syntax.discriminant].concat(syntax.cases).map(findAllRequireStatementsHelper)
+    case 'SwitchCase':
+      return [syntax.test].concat(syntax.consequent).filter(notNull).map(findAllRequireStatementsHelper)
     default:
       throw new Error('unknown type! ' + syntax.type)
   }
+}
+
+function notNull (val) {
+  return val !== null
 }
