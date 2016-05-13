@@ -4,6 +4,7 @@ const parser = require('esprima')
 const _ = require('lodash')
 const async = require('async')
 const coreModulesNames = require('node-core-module-names')
+const debug = require('debug')('weave')
 
 const entry = process.argv[2]
 
@@ -35,6 +36,8 @@ function viewDependencyTree (tree, padding) {
 // TODO: actually implement the spec
 // https://nodejs.org/api/modules.html#modules_all_together
 function buildDependencyTree (file, callback) {
+  debug('buildDependencyTree', file)
+
   if (file.endsWith('.json')) {
     console.warn('Cannot handle json yet', file)
     callback(null, { absolute: file, dependencies: []})
@@ -50,7 +53,9 @@ function buildDependencyTree (file, callback) {
 
   // it's a node_module!
   if (!file.startsWith('/')) {
-    findNodeModulesPath(getDirForFile(file), (error, nodeModulesDir) => {
+    debug('node_module!', file)
+
+    findNodeModulesPath(file, (error, nodeModulesDir) => {
       if (error) {
         callback(error)
       } else {
@@ -76,6 +81,7 @@ function addDependenciesToFile (params, callback) {
   const source = params.source
   const syntax = params.syntax
   const file = params.file
+  debug('addDependenciesToFile', file)
 
   const dir = getDirForFile(file)
   const requiresList = findAllRequireStatements(syntax)
@@ -98,6 +104,8 @@ function addDependenciesToFile (params, callback) {
 }
 
 function loadAsFile (file, callback) {
+  debug('loadAsFile', file)
+
   fs.readFile(file, (error, results) => {
     if (doesNotExistError(error) && !file.endsWith('.js')) {
       const withExtension = file + '.js'
@@ -119,6 +127,8 @@ function loadAsFile (file, callback) {
 }
 
 function loadAsDirectory (dir, callback) {
+  debug('loadAsDirectory', dir)
+
   const pkgPath = path.resolve(dir, 'package.json')
 
   fs.open(pkgPath, 'r', (error) => {
@@ -198,6 +208,8 @@ function getDirForFile (file) {
 }
 
 function findNodeModulesPath (dir, callback) {
+  debug('findNodeModulesPath', dir)
+
   const attempt = path.resolve(dir, 'node_modules')
 
   fs.open(attempt, 'r', function (error, fd) {
@@ -222,5 +234,8 @@ function illegalOperationOnDirectoryError (error) {
 function getParentDir (dir) {
   const splits = dir.split('/')
   const dirs = splits.slice(0, splits.length - 1)
-  return dirs.join('/')
+  const result = dirs.join('/')
+
+  debug('getParentDir', dir, result)
+  return result
 }

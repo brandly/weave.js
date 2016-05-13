@@ -1,13 +1,15 @@
 {
   "dependencies": {
     "async": "2.0.0-rc.4",
+    "debug": "2.2.0",
     "esprima": "2.7.2",
     "lodash": "4.12.0",
     "node-core-module-names": "1.1.0"
   },
   "scripts": {
     "test": "standard",
-    "example": "node index ./example"
+    "example": "node index ./example",
+    "debug-example": "DEBUG=weave node index ./example"
   },
   "devDependencies": {
     "standard": "7.0.1"
