@@ -14,7 +14,6 @@ const entry = process.argv[2]
 weave(entry)
 
 function weave (entry) {
-  // TODO: figure out how to handle initial `dir`
   const dir = path.resolve(getParentDir(entry))
   const value = './' + _.last(entry.split('/'))
 
@@ -39,10 +38,9 @@ function viewDependencyTree (tree, padding) {
 }
 
 // TODO: actually implement the spec
+// TODO: handle circular dependencies
 // https://nodejs.org/api/modules.html#modules_all_together
 function buildDependencyTree (requirement, callback) {
-  debug('buildDependencyTree', requirement)
-
   const value = requirement.value
   const dir = requirement.dir
 
@@ -60,6 +58,8 @@ function buildDependencyTree (requirement, callback) {
   }
 
   if (value.startsWith('./') || value.startsWith('/') || value.startsWith('../')) {
+    debug('buildDependencyTree for file', requirement)
+
     loadAsFile(requirement, (error, tree) => {
       if (doesNotExistError(error)) {
         debug('file does not exist', requirement)
@@ -72,17 +72,9 @@ function buildDependencyTree (requirement, callback) {
     })
     return
   } else {
-    debug('node_module!', value)
+    debug('buildDependencyTree for node_module', requirement)
 
-    findNodeModulesPath(dir, (error, nodeModulesDir) => {
-      if (error) {
-        callback(error)
-      } else {
-        loadAsDirectory(Object.assign({}, requirement, {
-          dir: nodeModulesDir
-        }), callback)
-      }
-    })
+    loadAsNodeModule(requirement, callback)
     return
   }
 }
@@ -92,10 +84,14 @@ function addDependenciesToFile (params, callback) {
   const syntax = params.syntax
   const value = params.value
   const dir = params.dir
+  const fullPath = params.fullPath
 
   debug('addDependenciesToFile', { value, dir })
 
-  const requiresList = findAllRequireStatements(syntax).map(value => { return { value, dir } })
+  const dirContainingFile = getParentDir(fullPath)
+  const requiresList = findAllRequireStatements(syntax).map(value => {
+    return { value, dir: dirContainingFile }
+  })
   debug('requiresList', JSON.stringify(requiresList))
 
   async.map(requiresList, buildDependencyTree, (error, dependencies) => {
@@ -136,7 +132,7 @@ function loadAsFile (requirement, callback) {
       const syntax = parser.parse(source)
 
       // TODO: figure out how to call this
-      addDependenciesToFile({ source, syntax, value, dir }, callback)
+      addDependenciesToFile({ source, syntax, value, dir, fullPath }, callback)
     }
   })
 }
@@ -149,41 +145,88 @@ function loadAsDirectory (requirement, callback) {
 
   const pkgPath = path.resolve(dir, value, 'package.json')
 
-  fs.open(pkgPath, 'r', (error) => {
+  fs.open(pkgPath, 'r', (error, fd) => {
     if (doesNotExistError(error)) {
       loadAsFile({
-        value: 'index.js',
+        value: './index.js',
         dir: path.join(dir, value)
       }, callback)
     } else if (error) {
       callback(error)
     } else {
-      // TODO: should i _not_ use require?
-      const pkg = require(pkgPath)
-      const newDir = path.join(dir, value)
-      let newValue = pkg.main || 'index.js'
+      fs.close(fd, (error) => {
+        if (error) {
+          callback(error)
+        } else {
+          // TODO: should i _not_ use require?
+          const pkg = require(pkgPath)
+          const newDir = path.join(dir, value)
+          let newValue = pkg.main || 'index.js'
 
-      if (!newValue.startsWith('./')) {
-        newValue = './' + newValue
-      }
+          if (!newValue.startsWith('./')) {
+            newValue = './' + newValue
+          }
 
-      buildDependencyTree({ dir: newDir, value: newValue }, callback)
+          buildDependencyTree({ dir: newDir, value: newValue }, callback)
+        }
+      })
+    }
+  })
+}
+
+function loadAsNodeModule (requirement, callback) {
+  loadAsNodeModuleHelper({ requirement, dir: requirement.dir }, callback)
+}
+
+const nodeModuleDebug = require('debug')('node-modules')
+
+function loadAsNodeModuleHelper (params, callback) {
+  const requirement = params.requirement
+  const dir = params.dir
+
+  nodeModuleDebug('loadAsNodeModuleHelper', dir)
+
+  findNodeModulesPath(dir, (error, nodeModulesDir) => {
+    if (error) {
+      callback(error)
+    } else {
+      loadAsDirectory(Object.assign({}, requirement, {
+        dir: nodeModulesDir
+      }), (error, tree) => {
+        if (doesNotExistError(error) || notADirectory(error)) {
+          loadAsNodeModuleHelper({ dir: getParentDir(dir), requirement }, callback)
+        } else if (error) {
+          callback(error)
+        } else {
+          callback(null, tree)
+        }
+      })
     }
   })
 }
 
 function findNodeModulesPath (dir, callback) {
-  debug('findNodeModulesPath', dir)
+  nodeModuleDebug('findNodeModulesPath', dir)
 
-  const attempt = path.resolve(dir, 'node_modules')
+  const attempt = dir.endsWith('node_modules') ? dir : path.resolve(dir, 'node_modules')
 
   fs.open(attempt, 'r', function (error, fd) {
     if (doesNotExistError(error)) {
-      return findNodeModulesPath(getParentDir(dir), callback)
+      // TODO: clean up this mess
+      let splitDir = dir.split('node_modules')
+      if (splitDir.length > 1) {
+        splitDir = splitDir.slice(0, splitDir.length - 1)
+      }
+      const withoutFinalNodeModules = splitDir.join('node_modules')
+      const newDir = getParentDir(withoutFinalNodeModules)
+      nodeModuleDebug('doesNotExistError, newDir', newDir)
+      return findNodeModulesPath(newDir, callback)
     } else if (error) {
       callback(error)
     } else {
-      callback(null, attempt)
+      fs.close(fd, function (error) {
+        callback(error, attempt)
+      })
     }
   })
 }
@@ -192,11 +235,18 @@ function doesNotExistError (error) {
   return error && error.code === 'ENOENT'
 }
 
+function notADirectory (error) {
+  return error && error.code === 'ENOTDIR'
+}
+
 function illegalOperationOnDirectoryError (error) {
   return error && error.code === 'EISDIR'
 }
 
 function getParentDir (dir) {
+  if (dir.endsWith('/')) {
+    dir = dir.slice(0, dir.length - 1)
+  }
   const splits = dir.split('/')
   const dirs = splits.slice(0, splits.length - 1)
   const result = dirs.join('/')
