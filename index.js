@@ -172,18 +172,20 @@ function findAllRequireStatementsHelper (syntax) {
     case 'ExpressionStatement':
       return findAllRequireStatementsHelper(syntax.expression)
     case 'AssignmentExpression':
-      return findAllRequireStatements(syntax.right)
+      return findAllRequireStatementsHelper(syntax.right)
     case 'Literal':
     case 'MemberExpression':
     case 'Identifier':
     case 'EmptyStatement':
       return null
     case 'NewExpression':
-      return syntax.arguments.map(findAllRequireStatements)
+      return syntax.arguments.map(findAllRequireStatementsHelper)
     case 'ObjectExpression':
-      return syntax.properties.map(findAllRequireStatements)
+      return syntax.properties.map(findAllRequireStatementsHelper)
     case 'Property':
-      return findAllRequireStatements(syntax.value)
+      return findAllRequireStatementsHelper(syntax.value)
+    case 'ConditionalExpression':
+      return [syntax.test.right, syntax.test.left].map(findAllRequireStatementsHelper)
     default:
       throw new Error('unknown type! ' + syntax.type)
   }
