@@ -43,7 +43,6 @@ function viewDependencyTree (tree, padding) {
 // https://nodejs.org/api/modules.html#modules_all_together
 function buildDependencyTree (requirement, callback) {
   const value = requirement.value
-  const dir = requirement.dir
 
   if (value.endsWith('.json')) {
     console.warn('Cannot handle json yet', value)
