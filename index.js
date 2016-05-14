@@ -31,7 +31,8 @@ function weave (entry) {
 function viewDependencyTree (tree, padding) {
   padding || (padding = '')
 
-  padding ? console.log(padding, tree.absolute) : console.log(tree.absolute)
+  const toPrint = tree.absolute + ' (' + tree.value + ')'
+  padding ? console.log(padding, toPrint) : console.log(toPrint)
 
   const childrenPadding = padding + '-'
   tree.dependencies.forEach(dep => viewDependencyTree(dep, childrenPadding))
