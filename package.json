@@ -9,7 +9,7 @@
   "scripts": {
     "test": "standard",
     "example": "node index ./example",
-    "debug-example": "DEBUG=weave node index ./example"
+    "debug-example": "DEBUG=build-dependency-tree node index ./example"
   },
   "devDependencies": {
     "standard": "7.0.1"
