@@ -17,7 +17,7 @@ function weave (entry) {
   const dir = path.resolve(getParentDir(entry))
   const value = './' + _.last(entry.split('/'))
 
-  buildDependencyTree({ value, dir }, (error, results) => {
+  buildDependencyTree({ raw: value, value, dir }, (error, results) => {
     if (error) {
       console.trace(error)
       throw error
@@ -84,6 +84,7 @@ function addDependenciesToFile (params, callback) {
   const source = params.source
   const syntax = params.syntax
   const value = params.value
+  const raw = params.raw
   const dir = params.dir
   const fullPath = params.fullPath
 
@@ -91,7 +92,7 @@ function addDependenciesToFile (params, callback) {
 
   const dirContainingFile = getParentDir(fullPath)
   const requiresList = findAllRequireStatements(syntax).map(value => {
-    return { value, dir: dirContainingFile }
+    return { raw: value, value, dir: dirContainingFile }
   })
   debug('requiresList', JSON.stringify(requiresList))
 
@@ -101,6 +102,7 @@ function addDependenciesToFile (params, callback) {
     } else {
       const result = {
         absolute: path.resolve(dir, value),
+        value: raw,
         source,
         syntax,
         dependencies
@@ -133,7 +135,9 @@ function loadAsFile (requirement, callback) {
       const syntax = parser.parse(source)
 
       // TODO: figure out how to call this
-      addDependenciesToFile({ source, syntax, value, dir, fullPath }, callback)
+      addDependenciesToFile(Object.assign({}, requirement, {
+        source, syntax, fullPath
+      }), callback)
     }
   })
 }
@@ -148,10 +152,10 @@ function loadAsDirectory (requirement, callback) {
 
   fs.open(pkgPath, 'r', (error, fd) => {
     if (doesNotExistError(error)) {
-      loadAsFile({
+      loadAsFile(Object.assign({}, requirement, {
         value: './index.js',
         dir: path.join(dir, value)
-      }, callback)
+      }), callback)
     } else if (error) {
       callback(error)
     } else {
@@ -168,7 +172,10 @@ function loadAsDirectory (requirement, callback) {
             newValue = './' + newValue
           }
 
-          buildDependencyTree({ dir: newDir, value: newValue }, callback)
+          buildDependencyTree(Object.assign({}, requirement, {
+            dir: newDir,
+            value: newValue
+          }), callback)
         }
       })
     }
