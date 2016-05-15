@@ -10,7 +10,7 @@ function a () {
   }
 }
 
-_.forEach([a], (b) => b()())
+_.forEach([a], function (b) { b()() })
 console.log(other())
 
 console.log(typeof async)
