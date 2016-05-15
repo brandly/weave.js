@@ -155,68 +155,15 @@ function loadAsDirectory (requirement, callback) {
 }
 
 function loadAsNodeModule (requirement, callback) {
-  loadAsNodeModuleHelper({ requirement, dir: requirement.dir }, callback)
-}
+  const resolved = require.resolve(requirement.value)
+  const dir = path.dirname(resolved)
+  const value = './' + path.basename(resolved)
 
-const nodeModuleDebug = require('debug')('node-modules')
-
-function loadAsNodeModuleHelper (params, callback) {
-  const requirement = params.requirement
-  const dir = params.dir
-
-  nodeModuleDebug('loadAsNodeModuleHelper', dir)
-
-  findNodeModulesPath(dir, (error, nodeModulesDir) => {
-    if (error) {
-      callback(error)
-    } else {
-      loadAsDirectory(Object.assign({}, requirement, {
-        dir: nodeModulesDir
-      }), (error, tree) => {
-        if (doesNotExistError(error) || notADirectory(error)) {
-          loadAsNodeModuleHelper({ dir: path.dirname(dir), requirement }, callback)
-        } else if (error) {
-          callback(error)
-        } else {
-          callback(null, tree)
-        }
-      })
-    }
-  })
-}
-
-function findNodeModulesPath (dir, callback) {
-  nodeModuleDebug('findNodeModulesPath', dir)
-
-  const attempt = dir.endsWith('node_modules') ? dir : path.resolve(dir, 'node_modules')
-
-  fs.open(attempt, 'r', function (error, fd) {
-    if (doesNotExistError(error)) {
-      // TODO: clean up this mess
-      let splitDir = dir.split('node_modules')
-      if (splitDir.length > 1) {
-        splitDir = splitDir.slice(0, splitDir.length - 1)
-      }
-      const withoutFinalNodeModules = splitDir.join('node_modules')
-      const newDir = path.dirname(withoutFinalNodeModules)
-      nodeModuleDebug('doesNotExistError, newDir', newDir)
-      return findNodeModulesPath(newDir, callback)
-    } else if (error) {
-      callback(error)
-    } else {
-      fs.close(fd, function (error) {
-        callback(error, attempt)
-      })
-    }
-  })
+  loadAsFile(Object.assign({}, requirement, { dir, value }), callback)
 }
 
 function doesNotExistError (error) {
   return error && error.code === 'ENOENT'
-}
-
-function notADirectory (error) {
-  return error && error.code === 'ENOTDIR'
 }
 
 function illegalOperationOnDirectoryError (error) {
