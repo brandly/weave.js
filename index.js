@@ -1,11 +1,14 @@
 'use strict'
 
+const fs = require('fs')
 const path = require('path')
 const _ = require('lodash')
 const shortId = require('shortid')
 const getParentDir = require('./get-parent-dir')
 const buildDependencyTree = require('./build-dependency-tree')
 const entry = process.argv[2]
+
+const prelude = fs.readFileSync('./prelude.txt').toString().trim()
 
 weave(entry)
 
@@ -21,9 +24,33 @@ function weave (entry) {
       tree.entry = true
 
       const allDependencies = flattenDependencyTree(tree)
-      console.log('allDependencies', allDependencies)
+      const moduleIds = allDependencies.map(dep => dep.id)
+
+      const modules = formatModules(allDependencies)
+      const conclusion = [modules, '{}', JSON.stringify(moduleIds)].join(',')
+      const output = `(${prelude})(${conclusion})`
+
+      console.log(output)
     }
   })
+}
+
+function formatModules (dependencies) {
+  return `{${dependencies.map(formatSingleModule).join(',')}}`
+}
+
+function formatSingleModule (dep) {
+  return [
+    JSON.stringify(dep.id),
+    ':[',
+    'function(require,module,exports){\n',
+    dep.source,
+    '\n},',
+    '{' + Object.keys(dep.dependencies || {}).sort().map(function (key) {
+        return JSON.stringify(key) + ':' + JSON.stringify(dep.dependencies[key])
+    }).join(',') + '}',
+    ']'
+  ].join('')
 }
 
 function flattenDependencyTree (tree) {
