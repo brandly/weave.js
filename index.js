@@ -6,7 +6,7 @@ const shortId = require('shortid')
 const buildDependencyTree = require('./build-dependency-tree')
 const entry = process.argv[2]
 
-const prelude = fs.readFileSync('./prelude.txt').toString().trim()
+const prelude = fs.readFileSync('./prelude.js').toString().trim()
 
 weave(entry)
 
