@@ -103,7 +103,6 @@ function loadAsFile (requirement, callback) {
       const source = results.toString()
       const syntax = parser.parse(source)
 
-      // TODO: figure out how to call this
       addDependenciesToFile(Object.assign({}, requirement, {
         source, syntax, fullPath
       }), callback)
@@ -132,7 +131,6 @@ function loadAsDirectory (requirement, callback) {
         if (error) {
           callback(error)
         } else {
-          // TODO: should i _not_ use require?
           const pkg = require(pkgPath)
           const newDir = path.join(dir, value)
           let newValue = pkg.main || 'index.js'
