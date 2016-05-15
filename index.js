@@ -39,10 +39,17 @@ function flattenDependencyTree (tree) {
       subDependencies[dep.value] = store[dep.absolute].id
     })
 
-    masterList.push(Object.assign({}, current.dependency, {
+    const final = {
       id: current.id,
-      dependencies: subDependencies
-    }))
+      dependencies: subDependencies,
+      source: current.dependency.source
+    }
+
+    if (current.dependency.entry) {
+      final.entry = true
+    }
+
+    masterList.push(final)
   })
 
   return masterList
