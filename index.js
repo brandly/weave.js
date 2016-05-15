@@ -2,6 +2,7 @@
 
 const path = require('path')
 const _ = require('lodash')
+const shortId = require('shortid')
 const getParentDir = require('./get-parent-dir')
 const buildDependencyTree = require('./build-dependency-tree')
 const entry = process.argv[2]
@@ -17,10 +18,44 @@ function weave (entry) {
       console.trace(error)
       throw error
     } else {
-      console.log('dependency tree!')
-      viewDependencyTree(tree)
+      tree.entry = true
+
+      const allDependencies = flattenDependencyTree(tree)
+      console.log('allDependencies', allDependencies)
     }
   })
+}
+
+function flattenDependencyTree (tree) {
+  const store = {}
+  flattenDependencyTreeHelper(tree, store)
+
+  const masterList = []
+  Object.keys(store).forEach(absolute => {
+    const current = store[absolute]
+
+    const subDependencies = {}
+    current.dependency.dependencies.map((dep) => {
+      subDependencies[dep.value] = store[dep.absolute].id
+    })
+
+    masterList.push(Object.assign({}, current.dependency, {
+      id: current.id,
+      dependencies: subDependencies
+    }))
+  })
+
+  return masterList
+}
+
+function flattenDependencyTreeHelper (tree, store) {
+  if (!store[tree.absolute]) {
+    store[tree.absolute] = {
+      id: shortId.generate(),
+      dependency: tree
+    }
+    tree.dependencies.forEach((dep) => flattenDependencyTreeHelper(dep, store))
+  }
 }
 
 function viewDependencyTree (tree, padding) {
