@@ -4,7 +4,6 @@ const fs = require('fs')
 const path = require('path')
 const _ = require('lodash')
 const shortId = require('shortid')
-const getParentDir = require('./get-parent-dir')
 const buildDependencyTree = require('./build-dependency-tree')
 const entry = process.argv[2]
 
@@ -13,8 +12,9 @@ const prelude = fs.readFileSync('./prelude.txt').toString().trim()
 weave(entry)
 
 function weave (entry) {
-  const dir = path.resolve(getParentDir(entry))
-  const value = './' + _.last(entry.split('/'))
+  const parsed = path.parse(path.resolve(entry))
+  const dir = parsed.dir
+  const value = './' + parsed.name
 
   buildDependencyTree({ raw: value, value, dir }, (error, tree) => {
     if (error) {
