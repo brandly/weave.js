@@ -49,8 +49,9 @@ function findAllRequireStatementsHelper (syntax) {
       return findAllRequireStatementsHelper(syntax.expression)
     case 'AssignmentExpression':
       return findAllRequireStatementsHelper(syntax.right)
-    case 'Literal':
     case 'MemberExpression':
+      return [syntax.object, syntax.property].filter(notNull).map(findAllRequireStatementsHelper)
+    case 'Literal':
     case 'Identifier':
     case 'EmptyStatement':
     case 'BreakStatement':
