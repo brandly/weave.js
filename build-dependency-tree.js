@@ -8,7 +8,6 @@ const async = require('async')
 const coreModulesNames = require('node-core-module-names')
 const debug = require('debug')('build-dependency-tree')
 const findAllRequireStatements = require('./find-all-require-statements')
-const getParentDir = require('./get-parent-dir')
 
 module.exports = buildDependencyTree
 
@@ -63,7 +62,7 @@ function addDependenciesToFile (params, callback) {
 
   debug('addDependenciesToFile', { value, dir })
 
-  const dirContainingFile = getParentDir(fullPath)
+  const dirContainingFile = path.dirname(fullPath)
   const requiresList = findAllRequireStatements(syntax).map(value => {
     return { raw: value, value, dir: dirContainingFile }
   })
@@ -175,7 +174,7 @@ function loadAsNodeModuleHelper (params, callback) {
         dir: nodeModulesDir
       }), (error, tree) => {
         if (doesNotExistError(error) || notADirectory(error)) {
-          loadAsNodeModuleHelper({ dir: getParentDir(dir), requirement }, callback)
+          loadAsNodeModuleHelper({ dir: path.dirname(dir), requirement }, callback)
         } else if (error) {
           callback(error)
         } else {
@@ -199,7 +198,7 @@ function findNodeModulesPath (dir, callback) {
         splitDir = splitDir.slice(0, splitDir.length - 1)
       }
       const withoutFinalNodeModules = splitDir.join('node_modules')
-      const newDir = getParentDir(withoutFinalNodeModules)
+      const newDir = path.dirname(withoutFinalNodeModules)
       nodeModuleDebug('doesNotExistError, newDir', newDir)
       return findNodeModulesPath(newDir, callback)
     } else if (error) {
