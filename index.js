@@ -2,7 +2,6 @@
 
 const fs = require('fs')
 const path = require('path')
-const _ = require('lodash')
 const shortId = require('shortid')
 const buildDependencyTree = require('./build-dependency-tree')
 const entry = process.argv[2]
@@ -47,7 +46,7 @@ function formatSingleModule (dep) {
     dep.source,
     '\n},',
     '{' + Object.keys(dep.dependencies || {}).sort().map(function (key) {
-        return JSON.stringify(key) + ':' + JSON.stringify(dep.dependencies[key])
+      return JSON.stringify(key) + ':' + JSON.stringify(dep.dependencies[key])
     }).join(',') + '}',
     ']'
   ].join('')
