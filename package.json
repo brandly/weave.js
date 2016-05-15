@@ -1,6 +1,7 @@
 {
   "dependencies": {
     "async": "2.0.0-rc.4",
+    "browser-builtins": "3.3.1",
     "debug": "2.2.0",
     "esprima": "2.7.2",
     "lodash": "4.12.0",

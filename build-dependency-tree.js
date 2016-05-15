@@ -6,6 +6,7 @@ const parser = require('esprima')
 const _ = require('lodash')
 const async = require('async')
 const coreModulesNames = require('node-core-module-names')
+const browserBuiltins = require('browser-builtins')
 const debug = require('debug')('build-dependency-tree')
 const findAllRequireStatements = require('./find-all-require-statements')
 
@@ -24,9 +25,7 @@ function buildDependencyTree (requirement, callback) {
   }
 
   if (_.includes(coreModulesNames, value)) {
-    // TODO: handle built-in-to-node packages (core modules) like `path` and such
-    console.warn('Cannot handle core modules yet:', value)
-    callback(null, { absolute: value, dependencies: [] })
+    loadAsCoreModule(requirement, callback)
     return
   }
 
@@ -152,6 +151,22 @@ function loadAsDirectory (requirement, callback) {
       })
     }
   })
+}
+
+function loadAsCoreModule (requirement, callback) {
+  const value = requirement.value
+  const nodeModule = browserBuiltins[requirement.value]
+
+  if (nodeModule) {
+    loadAsFile(Object.assign({}, requirement, {
+      dir: path.dirname(nodeModule),
+      value: './' + path.basename(nodeModule)
+    }), callback)
+  } else {
+    // TODO: handle built-in-to-node packages (core modules) like `path` and such
+    console.warn('Cannot handle some core modules yet:', value)
+    callback(null, { absolute: value, dependencies: [] })
+  }
 }
 
 function loadAsNodeModule (requirement, callback) {
