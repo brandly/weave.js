@@ -6,7 +6,7 @@ it definitely has problems, but it handles some basic situations
 
 ```shell
 $ npm install
-$ node index.js example > output/try-it.js
+$ bin/build-example
 $ open output/index.html
 ```
 

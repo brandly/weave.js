@@ -1,0 +1,3 @@
+#!/bin/bash
+
+node index.js example > output/try-it.js
