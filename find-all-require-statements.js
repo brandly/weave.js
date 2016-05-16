@@ -77,6 +77,7 @@ function findAllRequireStatementsHelper (syntax) {
     case 'ForStatement':
       return [syntax.init, syntax.test, syntax.update, syntax.body].filter(notNull).map(findAllRequireStatementsHelper)
     case 'WhileStatement':
+    case 'DoWhileStatement':
       return [syntax.test, syntax.body].map(findAllRequireStatementsHelper)
     case 'ConditionalExpression':
     case 'IfStatement':
