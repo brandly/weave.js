@@ -5,11 +5,12 @@
     "debug": "2.2.0",
     "esprima": "2.7.2",
     "lodash": "4.12.0",
+    "meow": "3.7.0",
     "shortid": "2.2.6"
   },
   "scripts": {
     "test": "standard",
-    "example": "node index ./example",
+    "example": "node cli ./example",
     "debug-example": "DEBUG=build-dependency-tree node index ./example"
   },
   "devDependencies": {

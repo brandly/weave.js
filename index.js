@@ -3,33 +3,39 @@
 const fs = require('fs')
 const path = require('path')
 const shortId = require('shortid')
-const buildDependencyTree = require('./build-dependency-tree')
-const entry = process.argv[2]
+const dependencyTree = require('./dependency-tree')
 
 const prelude = fs.readFileSync('./prelude.js').toString().trim()
 
-weave(entry)
+module.exports = weave
 
-function weave (entry) {
+function weave (params) {
+  const entry = params.entry
+  const viewTree = params.viewTree
+
   const parsed = path.parse(path.resolve(entry))
   const dir = parsed.dir
   const value = './' + parsed.name
 
-  buildDependencyTree({ raw: value, value, dir }, (error, tree) => {
+  dependencyTree.build({ raw: value, value, dir }, (error, tree) => {
     if (error) {
       console.trace(error)
       throw error
     } else {
       tree.entry = true
 
-      const allDependencies = flattenDependencyTree(tree)
-      const moduleIds = allDependencies.map(dep => dep.id)
+      if (viewTree) {
+        dependencyTree.view(tree)
+      } else {
+        const allDependencies = flattenDependencyTree(tree)
+        const moduleIds = allDependencies.map(dep => dep.id)
 
-      const modules = formatModules(allDependencies)
-      const conclusion = [modules, '{}', JSON.stringify(moduleIds)].join(',')
-      const output = `(${prelude})(${conclusion})`
+        const modules = formatModules(allDependencies)
+        const conclusion = [modules, '{}', JSON.stringify(moduleIds)].join(',')
+        const output = `(${prelude})(${conclusion})`
 
-      console.log(output)
+        console.log(output)
+      }
     }
   })
 }
@@ -89,15 +95,4 @@ function flattenDependencyTreeHelper (tree, store) {
     }
     tree.dependencies.forEach((dep) => flattenDependencyTreeHelper(dep, store))
   }
-}
-
-const CURRENT_DIR = path.resolve('./')
-function viewDependencyTree (tree, padding) {
-  padding || (padding = '')
-
-  const toPrint = path.relative(CURRENT_DIR, tree.absolute) + ' (' + tree.value + ')'
-  padding ? console.log(padding, toPrint) : console.log(toPrint)
-
-  const childrenPadding = padding + '--'
-  tree.dependencies.forEach(dep => viewDependencyTree(dep, childrenPadding))
 }

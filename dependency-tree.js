@@ -8,7 +8,10 @@ const browserBuiltins = require('browser-builtins')
 const debug = require('debug')('build-dependency-tree')
 const findAllRequireStatements = require('./find-all-require-statements')
 
-module.exports = buildDependencyTree
+module.exports = {
+  build: buildDependencyTree,
+  view: viewDependencyTree
+}
 
 // TODO: actually implement the spec
 // TODO: handle circular dependencies
@@ -47,6 +50,17 @@ function buildDependencyTree (requirement, callback) {
     loadAsNodeModule(requirement, callback)
     return
   }
+}
+
+const CURRENT_DIR = path.resolve('./')
+function viewDependencyTree (tree, padding) {
+  padding || (padding = '')
+
+  const toPrint = path.relative(CURRENT_DIR, tree.absolute) + ' (' + tree.value + ')'
+  padding ? console.log(padding, toPrint) : console.log(toPrint)
+
+  const childrenPadding = padding + '--'
+  tree.dependencies.forEach(dep => viewDependencyTree(dep, childrenPadding))
 }
 
 function addDependenciesToFile (params, callback) {
