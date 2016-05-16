@@ -11,7 +11,7 @@
   "scripts": {
     "test": "standard",
     "example": "node cli ./example",
-    "debug-example": "DEBUG=build-dependency-tree node index ./example"
+    "debug-example": "DEBUG=build-dependency-tree node cli ./example"
   },
   "devDependencies": {
     "standard": "7.0.1"
