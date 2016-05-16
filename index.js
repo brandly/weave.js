@@ -91,12 +91,13 @@ function flattenDependencyTreeHelper (tree, store) {
   }
 }
 
+const CURRENT_DIR = path.resolve('./')
 function viewDependencyTree (tree, padding) {
   padding || (padding = '')
 
-  const toPrint = tree.absolute + ' (' + tree.value + ')'
+  const toPrint = path.relative(CURRENT_DIR, tree.absolute) + ' (' + tree.value + ')'
   padding ? console.log(padding, toPrint) : console.log(toPrint)
 
-  const childrenPadding = padding + '-'
+  const childrenPadding = padding + '--'
   tree.dependencies.forEach(dep => viewDependencyTree(dep, childrenPadding))
 }
