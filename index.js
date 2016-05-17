@@ -2,7 +2,6 @@
 
 const fs = require('fs')
 const path = require('path')
-const shortId = require('shortid')
 const dependencyTree = require('./dependency-tree')
 
 const preludePath = path.join(__dirname, 'prelude.js')
@@ -88,9 +87,14 @@ function flattenDependencyTree (tree) {
 function flattenDependencyTreeHelper (tree, store) {
   if (!store[tree.absolute]) {
     store[tree.absolute] = {
-      id: shortId.generate(),
+      id: getNextNumber(),
       dependency: tree
     }
     tree.dependencies.forEach((dep) => flattenDependencyTreeHelper(dep, store))
   }
+}
+
+let nextNumber = 0
+function getNextNumber () {
+  return nextNumber++
 }
