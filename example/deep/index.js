@@ -1,4 +1,5 @@
+const data = require('./data')
 
 module.exports = function deep () {
-  console.log('in here!')
+  console.log(data.message)
 }

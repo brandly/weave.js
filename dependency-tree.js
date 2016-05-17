@@ -106,15 +106,30 @@ function loadAsFile (requirement, callback) {
   debug('fullPath', fullPath)
 
   fs.readFile(fullPath, (error, results) => {
-    if (doesNotExistError(error) && !value.endsWith('.js')) {
-      const withExtension = value + '.js'
-      loadAsFile(Object.assign({}, requirement, { value: withExtension }), callback)
+    if (doesNotExistError(error) && !value.endsWith('.js') && !value.endsWith('.json')) {
+      const withJsExtension = value + '.js'
+
+      loadAsFile(Object.assign({}, requirement, { value: withJsExtension }), (error, loaded) => {
+        if (doesNotExistError(error)) {
+          const withJsonExtension = value + '.json'
+          loadAsFile(Object.assign({}, requirement, { value: withJsonExtension }), callback)
+        } else if (error) {
+          callback(error)
+        } else {
+          callback(null, loaded)
+        }
+      })
     } else if (illegalOperationOnDirectoryError(error)) {
       loadAsDirectory(requirement, callback)
     } else if (error) {
       callback(error)
     } else {
-      const source = results.toString()
+      let source = results.toString()
+
+      if (value.endsWith('.json')) {
+        source = 'module.exports=' + source.trim()
+      }
+
       const syntax = parser.parse(source)
 
       addDependenciesToFile(Object.assign({}, requirement, {

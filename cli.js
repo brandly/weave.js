@@ -3,7 +3,6 @@
 
 var meow = require('meow')
 var weave = require('./')
-var tree = require('./dependency-tree')
 
 var cli = meow({
   help: [
