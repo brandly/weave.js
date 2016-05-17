@@ -5,7 +5,8 @@ const path = require('path')
 const shortId = require('shortid')
 const dependencyTree = require('./dependency-tree')
 
-const prelude = fs.readFileSync('./prelude.js').toString().trim()
+const preludePath = path.join(__dirname, 'prelude.js')
+const prelude = fs.readFileSync(preludePath, 'utf8').toString().trim()
 
 module.exports = weave
 
