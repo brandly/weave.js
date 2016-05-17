@@ -63,8 +63,7 @@ function flattenDependencyTree (tree) {
   const store = {}
   flattenDependencyTreeHelper(tree, store)
 
-  const masterList = []
-  Object.keys(store).forEach(absolute => {
+  return Object.keys(store).map(absolute => {
     const current = store[absolute]
 
     const subDependencies = {}
@@ -82,10 +81,8 @@ function flattenDependencyTree (tree) {
       final.entry = true
     }
 
-    masterList.push(final)
+    return final
   })
-
-  return masterList
 }
 
 function flattenDependencyTreeHelper (tree, store) {
