@@ -1,4 +1,8 @@
 {
+  "name": "weave.js",
+  "version": "0.1.0",
+  "description": "poor man's browserify",
+  "main": "index.js",
   "dependencies": {
     "async": "2.0.0-rc.4",
     "browser-builtins": "3.3.1",
@@ -8,6 +12,22 @@
     "meow": "3.7.0",
     "shortid": "2.2.6"
   },
+  "author": "Matthew Brandly <brandly13@gmail.com> (http://brandly.me/)",
+  "license": "MIT",
+  "bin": {
+    "weave": "cli.js"
+  },
+  "engines": {
+    "node": ">=5.0.0"
+  },
+  "repository": "brandly/weave.js",
+  "files": [
+    "index.js",
+    "cli.js",
+    "find-all-require-statements.js",
+    "dependency-tree.js",
+    "prelude.js"
+  ],
   "scripts": {
     "test": "standard",
     "example": "node cli ./example",
