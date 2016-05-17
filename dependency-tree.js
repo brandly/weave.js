@@ -5,6 +5,7 @@ const path = require('path')
 const parser = require('esprima')
 const async = require('async')
 const browserBuiltins = require('browser-builtins')
+const resolve = require('resolve')
 const debug = require('debug')('build-dependency-tree')
 const findAllRequireStatements = require('./find-all-require-statements')
 
@@ -192,11 +193,18 @@ function loadAsCoreModule (requirement, callback) {
 }
 
 function loadAsNodeModule (requirement, callback) {
-  const resolved = require.resolve(requirement.value)
-  const dir = path.dirname(resolved)
-  const value = './' + path.basename(resolved)
+  resolve(requirement.value, {
+    basedir: requirement.dir
+  }, function (error, modulePath) {
+    if (error) {
+      callback(error)
+    } else {
+      const dir = path.dirname(modulePath)
+      const value = './' + path.basename(modulePath)
 
-  loadAsFile(Object.assign({}, requirement, { dir, value }), callback)
+      loadAsFile(Object.assign({}, requirement, { dir, value }), callback)
+    }
+  })
 }
 
 function doesNotExistError (error) {
