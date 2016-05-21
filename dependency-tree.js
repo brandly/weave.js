@@ -131,6 +131,10 @@ function loadAsFile (requirement, callback) {
         source = 'module.exports=' + source.trim()
       }
 
+      if (source.startsWith('#!')) {
+        source = '//' + source
+      }
+
       const syntax = parser.parse(source)
 
       addDependenciesToFile(Object.assign({}, requirement, {
