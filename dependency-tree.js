@@ -20,12 +20,6 @@ module.exports = {
 function buildDependencyTree (requirement, callback) {
   const value = requirement.value
 
-  if (value.endsWith('.json')) {
-    console.warn('Cannot handle json yet', value)
-    callback(null, { absolute: value, dependencies: [] })
-    return
-  }
-
   if (isCoreModuleName(value)) {
     loadAsCoreModule(requirement, callback)
     return
