@@ -13,11 +13,13 @@ function weave (params) {
   const entry = params.entry
   const viewTree = params.viewTree
 
-  const parsed = path.parse(path.resolve(entry))
-  const dir = parsed.dir
-  const value = './' + parsed.name
+  const parsedEntry = path.parse(path.resolve(entry))
+  const dir = parsedEntry.dir
+  const value = './' + parsedEntry.name
 
-  dependencyTree.build({ raw: value, value, dir }, (error, tree) => {
+  const baseDir = params.baseDir || parsedEntry.dir
+
+  dependencyTree.build({ raw: value, value, dir, baseDir }, (error, tree) => {
     if (error) {
       console.trace(error)
       throw error
@@ -27,7 +29,7 @@ function weave (params) {
       if (viewTree) {
         dependencyTree.view(tree)
       } else {
-        const allDependencies = flattenDependencyTree(tree)
+        const allDependencies = flattenDependencyTree(tree, baseDir)
         const moduleIds = allDependencies.map(dep => dep.id)
 
         const modules = formatModules(allDependencies)
@@ -49,7 +51,7 @@ function formatSingleModule (dep) {
     JSON.stringify(dep.id),
     ':[',
     'function(require,module,exports){\n',
-    dep.source,
+    getSource(dep),
     '\n},',
     '{' + Object.keys(dep.dependencies || {}).sort().map(function (key) {
       return JSON.stringify(key) + ':' + JSON.stringify(dep.dependencies[key])
@@ -58,7 +60,23 @@ function formatSingleModule (dep) {
   ].join('')
 }
 
-function flattenDependencyTree (tree) {
+function getSource (dep) {
+  function wrapSource () {
+    return [
+      '(function(__filename,__dirname){',
+      dep.source,
+      '}).call(this,"' + dep.filename + '","' + dep.dirname + '")'
+    ].join('\n')
+  }
+
+  // This can produce false positives...
+  const needsNames = dep.source && (
+    dep.source.includes('__dirname') || dep.source.includes('__filename')
+  )
+  return needsNames ? wrapSource() : dep.source
+}
+
+function flattenDependencyTree (tree, baseDir) {
   const store = {}
   flattenDependencyTreeHelper(tree, store)
 
@@ -70,10 +88,15 @@ function flattenDependencyTree (tree) {
       subDependencies[dep.value] = store[dep.absolute].id
     })
 
+    const filename = '/' + path.relative(baseDir, absolute)
+    const dirname = path.dirname(filename)
+
     const final = {
       id: current.id,
       dependencies: subDependencies,
-      source: current.dependency.source
+      source: current.dependency.source,
+      filename,
+      dirname
     }
 
     if (current.dependency.entry) {

@@ -4,6 +4,8 @@ const async = require('async')
 const _ = require('lodash')
 const url = require('url')
 
+console.log('index', __dirname, __filename)
+
 // look at this sick program
 function a () {
   return function () {
