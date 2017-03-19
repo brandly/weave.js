@@ -96,6 +96,7 @@ function loadAsFile (requirement, callback) {
 
   const value = requirement.value
   const dir = requirement.dir
+  const raw = requirement.raw
 
   const fullPath = path.resolve(dir, value)
   debug('fullPath', fullPath)
@@ -127,6 +128,11 @@ function loadAsFile (requirement, callback) {
 
       if (source.startsWith('#!')) {
         source = '//' + source
+      }
+
+      if (raw !== 'process' && source.includes('process')) {
+        debug('injecting process', { raw, value, dir })
+        source = 'var process = require("process");\n' + source
       }
 
       const syntax = parser.parse(source)
