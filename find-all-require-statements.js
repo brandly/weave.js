@@ -39,6 +39,7 @@ function findAllRequireStatementsHelper (syntax) {
     case 'FunctionExpression':
     case 'ArrowFunctionExpression':
     case 'CatchClause':
+    case 'LabeledStatement':
       return findAllRequireStatementsHelper(syntax.body)
     case 'ReturnStatement':
     case 'UpdateExpression':
