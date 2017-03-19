@@ -13,14 +13,14 @@ const NoteList = require('./NoteList')
 const initialNotes = require('./notes')
 
 const App = React.createClass({
-  getInitialState () {
+  getInitialState: function () {
     return {
       noteInProgress: '',
       notes: initialNotes
     }
   },
 
-  addNote () {
+  addNote: function () {
     this.setState({
       noteInProgress: '',
       notes: this.state.notes.concat([{
@@ -29,7 +29,7 @@ const App = React.createClass({
     })
   },
 
-  render () {
+  render: function () {
     const notes = this.state.notes
     const noteInProgress = this.state.noteInProgress
     const that = this
