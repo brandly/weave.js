@@ -2,7 +2,7 @@
 
 const fs = require('fs')
 const path = require('path')
-const parser = require('esprima')
+const parser = require('acorn')
 const async = require('async')
 const browserBuiltins = require('browser-builtins')
 const resolve = require('resolve')

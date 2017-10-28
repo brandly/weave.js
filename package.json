@@ -4,6 +4,7 @@
   "description": "poor man's browserify",
   "main": "index.js",
   "dependencies": {
+    "acorn": "5.1.2",
     "async": "2.0.0-rc.4",
     "browser-builtins": "3.3.1",
     "debug": "2.2.0",

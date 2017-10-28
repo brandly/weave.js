@@ -1,5 +1,6 @@
 const _ = require('lodash')
 const debug = require('debug')('require-statements')
+const walk = require('acorn/dist/walk')
 
 module.exports = findAllRequireStatements
 
@@ -13,89 +14,17 @@ function findAllRequireStatements (syntax) {
           .value()
 }
 
-// TODO: read some esprima docs and be more thorough here
 function findAllRequireStatementsHelper (syntax) {
   debug('syntax', syntax)
+  const statements = []
 
-  if (typeof syntax === 'undefined' || syntax === null) {
-    console.trace('why tho')
-  }
-
-  switch (syntax.type) {
-    case 'Program':
-    case 'BlockStatement':
-      return syntax.body.map(findAllRequireStatementsHelper)
-    case 'VariableDeclaration':
-      return syntax.declarations.map(findAllRequireStatementsHelper)
-    case 'VariableDeclarator':
-      return syntax.init && findAllRequireStatementsHelper(syntax.init)
-    case 'CallExpression':
-      if (syntax.callee.type === 'Identifier' && syntax.callee.name === 'require') {
-        return syntax.arguments[0].value
-      } else {
-        return null
+  walk.simple(syntax, {
+    CallExpression (node) {
+      if (node.callee.type === 'Identifier' && node.callee.name === 'require') {
+        statements.push(node.arguments[0].value)
       }
-    case 'FunctionDeclaration':
-    case 'FunctionExpression':
-    case 'ArrowFunctionExpression':
-    case 'CatchClause':
-    case 'LabeledStatement':
-      return findAllRequireStatementsHelper(syntax.body)
-    case 'ReturnStatement':
-    case 'UpdateExpression':
-    case 'UnaryExpression':
-    case 'ThrowStatement':
-      return syntax.argument && findAllRequireStatementsHelper(syntax.argument)
-    case 'ExpressionStatement':
-      return findAllRequireStatementsHelper(syntax.expression)
-    case 'AssignmentExpression':
-      return findAllRequireStatementsHelper(syntax.right)
-    case 'MemberExpression':
-      return [syntax.object, syntax.property].filter(notNull).map(findAllRequireStatementsHelper)
-    case 'Literal':
-    case 'Identifier':
-    case 'EmptyStatement':
-    case 'BreakStatement':
-    case 'ThisExpression':
-    case 'ContinueStatement':
-    case 'TemplateElement':
-      return null
-    case 'TemplateLiteral':
-      return syntax.quasis.concat(syntax.expressions).map(findAllRequireStatementsHelper)
-    case 'SequenceExpression':
-      return syntax.expressions.map(findAllRequireStatementsHelper)
-    case 'NewExpression':
-      return syntax.arguments.map(findAllRequireStatementsHelper)
-    case 'ObjectExpression':
-      return syntax.properties.map(findAllRequireStatementsHelper)
-    case 'Property':
-      return findAllRequireStatementsHelper(syntax.value)
-    case 'BinaryExpression':
-    case 'LogicalExpression':
-      return [syntax.right, syntax.left].map(findAllRequireStatementsHelper)
-    case 'ForInStatement':
-      return [syntax.right, syntax.left, syntax.body].map(findAllRequireStatementsHelper)
-    case 'ForStatement':
-      return [syntax.init, syntax.test, syntax.update, syntax.body].filter(notNull).map(findAllRequireStatementsHelper)
-    case 'WhileStatement':
-    case 'DoWhileStatement':
-      return [syntax.test, syntax.body].map(findAllRequireStatementsHelper)
-    case 'ConditionalExpression':
-    case 'IfStatement':
-      return [syntax.test, syntax.consequent, syntax.alternate].filter(notNull).map(findAllRequireStatementsHelper)
-    case 'ArrayExpression':
-      return syntax.elements.map(findAllRequireStatementsHelper)
-    case 'TryStatement':
-      return [syntax.block].concat(syntax.handlers).map(findAllRequireStatementsHelper)
-    case 'SwitchStatement':
-      return [syntax.discriminant].concat(syntax.cases).map(findAllRequireStatementsHelper)
-    case 'SwitchCase':
-      return [syntax.test].concat(syntax.consequent).filter(notNull).map(findAllRequireStatementsHelper)
-    default:
-      throw new Error('unknown type! ' + syntax.type)
-  }
-}
+    }
+  })
 
-function notNull (val) {
-  return val !== null
+  return statements
 }
