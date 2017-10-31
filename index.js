@@ -29,23 +29,21 @@ module.exports = class Weave {
     this.baseDir = baseDir || dir
   }
 
-  bundle () {
+  bundle (stream) {
     const req = new RequireStatement(this.dir, this.value)
 
-    const allFiles = []
+    stream.write(`(${prelude})({`)
+
+    const moduleIds = []
     new DependencyResolver(req)
       .on('file', file => {
-        allFiles.push(file)
+        stream.write(`${this.formatSingleModule(file)},`)
+        moduleIds.push(file.resource.id)
       })
       .on('error', console.error.bind(console, '~ ERROR:'))
       .on('end', () => {
-        const moduleIds = allFiles.map(file => file.resource.id)
-
-        const modules = this.formatModules(allFiles)
-        const conclusion = [modules, '{}', JSON.stringify(moduleIds)].join(',')
-        const output = `(${prelude})(${conclusion})`
-
-        console.log(output)
+        const conclusion = ['}', '{}', JSON.stringify(moduleIds)].join(',')
+        stream.write(`${conclusion})\n`)
       })
       .findAll()
   }
@@ -89,10 +87,13 @@ module.exports = class Weave {
 class DependencyResolver extends EventEmitter {
   constructor (entry) {
     super()
-    // RequireStatement
+
+    assert.ok(entry instanceof RequireStatement)
     this.entry = entry
+
     // abs path -> Resource
     this.resourceMap = {}
+
     // still need to resolve into Files
     this._newResources = []
     this.nextId = 0
