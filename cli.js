@@ -22,4 +22,4 @@ if (!entry) {
   process.exit(1)
 }
 
-new Weave({ entry, viewTree: cli.flags.viewTree }).bundle(process.stdout)
+new Weave({ entry }).bundle(process.stdout)

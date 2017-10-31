@@ -1,4 +1,4 @@
-# weave
+# weave.js
 
 i wanted to try building something like [browserify](http://browserify.org/)
 
