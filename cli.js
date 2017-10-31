@@ -8,14 +8,10 @@ var cli = meow({
   help: [
     'Usage',
     '  weave <entry>',
-    '  weave <entry> --view-tree',
     '',
     'Example',
     '  weave index.js',
-    '  weave index.js --view-tree',
-    '',
-    'Options',
-    '  --view-tree View full dependency tree'
+    ''
   ].join('\n')
 })
 

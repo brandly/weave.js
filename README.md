@@ -18,4 +18,4 @@ $ bin/build-example
 $ open output/index.html
 ```
 
-the example is p lame, but you can open your console and see some output :100:
+the example is a really basic react app, but it works :100:
