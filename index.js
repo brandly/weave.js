@@ -14,34 +14,76 @@ const debug = require('debug')('weave')
 
 const preludePath = path.join(__dirname, 'prelude.js')
 const prelude = fs.readFileSync(preludePath, 'utf8').toString().trim()
+const noop = () => {}
 
-module.exports = weave
+module.exports = class Weave {
+  constructor (params) {
+    const { entry, baseDir } = params
 
-function weave (params) {
-  const { entry } = params
+    const parsedEntry = path.parse(path.resolve(entry))
+    const dir = parsedEntry.dir
+    const value = './' + parsedEntry.name
 
-  const parsedEntry = path.parse(path.resolve(entry))
-  const dir = parsedEntry.dir
-  const value = './' + parsedEntry.name
+    this.dir = dir
+    this.value = value
+    this.baseDir = baseDir || dir
+  }
 
-  const req = new RequireStatement(dir, value)
+  bundle () {
+    const req = new RequireStatement(this.dir, this.value)
 
-  const allFiles = []
-  new DependencyResolver(req)
-    .on('file', file => {
-      allFiles.push(file)
-    })
-    .on('error', console.error.bind(console, '~ ERROR:'))
-    .on('end', () => {
-      const moduleIds = allFiles.map(file => file.resource.id)
+    const allFiles = []
+    new DependencyResolver(req)
+      .on('file', file => {
+        allFiles.push(file)
+      })
+      .on('error', console.error.bind(console, '~ ERROR:'))
+      .on('end', () => {
+        const moduleIds = allFiles.map(file => file.resource.id)
 
-      const modules = formatModules(allFiles)
-      const conclusion = [modules, '{}', JSON.stringify(moduleIds)].join(',')
-      const output = `(${prelude})(${conclusion})`
+        const modules = this.formatModules(allFiles)
+        const conclusion = [modules, '{}', JSON.stringify(moduleIds)].join(',')
+        const output = `(${prelude})(${conclusion})`
 
-      console.log(output)
-    })
-    .findAll(() => {})
+        console.log(output)
+      })
+      .findAll()
+  }
+
+  formatModules (dependencies) {
+    return `{${dependencies.map(this.formatSingleModule.bind(this)).join(',')}}`
+  }
+
+  formatSingleModule (file) {
+    return [
+      JSON.stringify(file.resource.id),
+      ':[',
+      'function(require,module,exports){\n',
+      this.getSource(file),
+      '\n},',
+      '{' + Object.keys(file.dependencies || {}).sort().map(function (key) {
+        return JSON.stringify(key) + ':' + JSON.stringify(file.dependencies[key])
+      }).join(',') + '}',
+      ']'
+    ].join('')
+  }
+
+  getSource (file) {
+    const wrapSource = () => {
+      const filename = '/' + path.relative(this.baseDir, file.resource.absPath)
+      const dirname = path.dirname(filename)
+
+      return [
+        '(function(__filename,__dirname){',
+        file.source,
+        '}).call(this,"' + filename + '","' + dirname + '")'
+      ].join('\n')
+    }
+
+    // This can produce false positives...
+    const needsNames = file.source.includes('__dirname') || file.source.includes('__filename')
+    return needsNames ? wrapSource() : file.source
+  }
 }
 
 class DependencyResolver extends EventEmitter {
@@ -53,9 +95,10 @@ class DependencyResolver extends EventEmitter {
     this.resourceMap = {}
     // still need to resolve into Files
     this._newResources = []
+    this.nextId = 0
   }
 
-  findAll (cb) {
+  findAll (cb = noop) {
     this._findDependencies([this.entry], (error, deps) => {
       if (error) {
         cb(error)
@@ -91,7 +134,9 @@ class DependencyResolver extends EventEmitter {
       } else {
         const existingResource = !!this.resourceMap[absPath]
 
-        const resource = existingResource ? this.resourceMap[absPath] : new Resource(absPath)
+        const resource = existingResource
+          ? this.resourceMap[absPath]
+          : new Resource(absPath, this._getNextId())
         const dep = new Dependency(reqStmt, resource)
 
         if (!existingResource) {
@@ -172,6 +217,10 @@ class DependencyResolver extends EventEmitter {
       })
     })
   }
+
+  _getNextId () {
+    return this.nextId++
+  }
 }
 
 class RequireStatement {
@@ -183,9 +232,9 @@ class RequireStatement {
 }
 
 class Resource {
-  constructor (absPath) {
+  constructor (absPath, id) {
     this.absPath = absPath
-    this.id = getNextNumber()
+    this.id = id
   }
 }
 
@@ -320,44 +369,4 @@ function findAllRequireStatements (dir, ast) {
 
 function doesNotExistError (error) {
   return error && error.code === 'ENOENT'
-}
-
-function formatModules (dependencies) {
-  return `{${dependencies.map(formatSingleModule).join(',')}}`
-}
-
-function formatSingleModule (file) {
-  return [
-    JSON.stringify(file.resource.id),
-    ':[',
-    'function(require,module,exports){\n',
-    getSource(file),
-    '\n},',
-    '{' + Object.keys(file.dependencies || {}).sort().map(function (key) {
-      return JSON.stringify(key) + ':' + JSON.stringify(file.dependencies[key])
-    }).join(',') + '}',
-    ']'
-  ].join('')
-}
-
-function getSource (file) {
-  function wrapSource () {
-    return [
-      '(function(__filename,__dirname){',
-      file.source,
-      // TODO: inject these properly
-      '}).call(this,"' + file.filename + '","' + file.dirname + '")'
-    ].join('\n')
-  }
-
-  // This can produce false positives...
-  const needsNames = file.source && (
-    file.source.includes('__dirname') || file.source.includes('__filename')
-  )
-  return needsNames ? wrapSource() : file.source
-}
-
-let nextNumber = 0
-function getNextNumber () {
-  return nextNumber++
 }

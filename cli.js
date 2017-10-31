@@ -2,7 +2,7 @@
 'use strict'
 
 var meow = require('meow')
-var weave = require('./')
+var Weave = require('./')
 
 var cli = meow({
   help: [
@@ -26,4 +26,4 @@ if (!entry) {
   process.exit(1)
 }
 
-weave({ entry, viewTree: cli.flags.viewTree })
+new Weave({ entry, viewTree: cli.flags.viewTree }).bundle()

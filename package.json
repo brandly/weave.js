@@ -39,5 +39,10 @@
     "react": "15.4.2",
     "react-dom": "15.4.2",
     "standard": "7.0.1"
+  },
+  "standard": {
+    "ignore": [
+      "prelude.js"
+    ]
   }
 }
