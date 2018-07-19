@@ -255,7 +255,7 @@ class File {
     }, {})
 
     this.source = source
-    this.ast = parser.parse(source)
+    this.ast = ast
   }
 }
 
